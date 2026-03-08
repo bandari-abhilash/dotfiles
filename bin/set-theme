@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Omakub-style theme setter
+
+THEME=$1
+THEME_FILE="$HOME/dotfiles/themes/${THEME}.sh"
+
+if [ -z "$THEME" ]; then
+    echo "Usage: set-theme <theme-name>"
+    echo "Available themes:"
+    ls "$HOME/dotfiles/themes" | grep "\.sh$" | sed 's/\.sh$//'
+    exit 1
+fi
+
+if [ ! -f "$THEME_FILE" ]; then
+    echo "Error: Theme '$THEME' not found!"
+    exit 1
+fi
+
+echo "Applying theme: $THEME..."
+
+# Update SketchyBar
+cat "$THEME_FILE" > "$HOME/.config/sketchybar/colors.sh"
+sketchybar --reload
+
+# Change macOS Wallpaper
+BG_FILE=$(ls "$HOME/dotfiles/themes/backgrounds/${THEME}".* 2>/dev/null | head -n 1)
+if [ -n "$BG_FILE" ] && [ -f "$BG_FILE" ]; then
+    echo "Updating desktop wallpaper..."
+    # Bypass macOS wallpaper cache by copying to a unique path
+    UNIQUE_BG="/tmp/${THEME}_bg_$(date +%s).${BG_FILE##*.}"
+    cp "$BG_FILE" "$UNIQUE_BG"
+    osascript -e "tell application \"System Events\" to set picture of every desktop to \"$UNIQUE_BG\""
+    
+    # Clean up older cached wallpapers to save space
+    find /tmp -name "${THEME}_bg_*.*" ! -name "$(basename "$UNIQUE_BG")" -delete 2>/dev/null
+fi
+
+echo "Theme applied!"

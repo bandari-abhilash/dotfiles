@@ -1,0 +1,69 @@
+# Place this in ~/.config/aerospace/aerospace.toml
+
+# Start SketchyBar when AeroSpace starts
+after-startup-command = [
+    'exec-and-forget sketchybar'
+]
+
+# Notify SketchyBar when workspace changes
+exec-on-workspace-change = [
+    '/bin/bash',
+    '-c',
+    'sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE'
+]
+
+# Multi-monitor: move mouse to focused monitor
+on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
+
+[gaps]
+inner.horizontal = 8
+inner.vertical = 8
+outer.bottom = 5
+outer.top = 60
+outer.right = 5
+outer.left = 5
+
+
+
+# Mode configuration
+[mode.main.binding]
+
+# --- WINDOW FOCUS (Option + hjkl) ---
+alt-h = 'focus left'
+alt-j = 'focus down'
+alt-k = 'focus up'
+alt-l = 'focus right'
+
+# --- WINDOW MOVE (Option + Shift + hjkl) ---
+alt-shift-h = 'move left'
+alt-shift-j = 'move down'
+alt-shift-k = 'move up'
+alt-shift-l = 'move right'
+
+# --- WORKSPACES (Option + 1-9) ---
+alt-1 = 'workspace 1'
+alt-2 = 'workspace 2'
+alt-3 = 'workspace 3'
+alt-4 = 'workspace 4'
+alt-5 = 'workspace 5'
+alt-6 = 'workspace 6'
+alt-7 = 'workspace 7'
+
+# --- MOVE WINDOW TO WORKSPACE (Option + Shift + 1-9) ---
+alt-shift-1 = 'move-node-to-workspace 1'
+alt-shift-2 = 'move-node-to-workspace 2'
+alt-shift-3 = 'move-node-to-workspace 3'
+alt-shift-4 = 'move-node-to-workspace 4'
+alt-shift-5 = 'move-node-to-workspace 5'
+alt-shift-6 = 'move-node-to-workspace 6'
+alt-shift-7 = 'move-node-to-workspace 7'
+
+
+# --- UTILS ---
+alt-slash = 'layout tiles horizontal vertical' # Toggle split orientation
+alt-comma = 'layout accordion horizontal vertical' 
+alt-f = 'macos-native-fullscreen'
+alt-shift-space = 'layout floating tiling' # Float window
+alt-shift-r = 'reload-config'
+alt-tab = 'workspace-back-and-forth'
+alt-shift-tab = 'move-workspace-to-monitor --wrap-around next'
