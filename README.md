@@ -14,29 +14,14 @@ Built around [AeroSpace](https://github.com/nikitabobko/AeroSpace), [SketchyBar]
 
 ---
 
-## Screenshots
-
-**Replacing the system menu bar with SketchyBar** — set it to hide "In Full Screen Only" so they don't overlap:
-
-![Menu bar setting — set to In Full Screen Only](replacing_mac_menubar.png)
-
-**Granting Accessibility permission to AeroSpace** — required for it to move and resize windows:
-
-![AeroSpace in Accessibility settings](aerospace_accesibility.png)
-
-**skhd showing up in Login Items** — this confirms it's running as a background service:
-
-![skhd in Login Items & Extensions](skhd_accessibility.png)
-
----
-
 ## Installation
 
 Clone it anywhere — the script detects its own location automatically:
 
 ```bash
-git clone https://github.com/bandari-abhilash/dotfiles.git ~/dotfiles
+git clone https://github.com/bandari-abhilash/dotfiles.git 
 cd ~/dotfiles
+chmod +x install.sh
 ./install.sh
 ```
 
@@ -56,6 +41,23 @@ If anything fails midway, the script rolls back everything it changed — no hal
 ---
 
 ## Post-install: Permissions
+
+
+## Screenshots
+
+**Replacing the system menu bar with SketchyBar** — set it to hide "In Full Screen Only" so they don't overlap:
+
+![Menu bar setting — set to In Full Screen Only](replacing_mac_menubar.png)
+
+**Granting Accessibility permission to AeroSpace** — required for it to move and resize windows:
+
+![AeroSpace in Accessibility settings](aerospace_accesibility.png)
+
+**skhd showing up in Login Items** — this confirms it's running as a background service:
+
+![skhd in Login Items & Extensions](skhd_accessibility.png)
+
+---
 
 Two things need Accessibility access. macOS will prompt you, but here's what to expect.
 
@@ -201,3 +203,17 @@ dotfiles/
 │   └── set-theme                     # Theme switcher script
 └── install.sh                        # One-click installer with rollback
 ```
+
+---
+
+## Troubleshooting
+
+### "No available formula" or "CommandLineTools" error during install
+If the script fails with an error like `No available formula with the name` or explicitly hints at Xcode Command Line Tools, macOS is missing the required C-compiler to build SketchyBar/skhd.
+
+Fix this by reinstalling the Xcode Command Line Tools:
+```bash
+sudo rm -rf /Library/Developer/CommandLineTools
+sudo xcode-select --install
+```
+A prompt will appear — click **Install**. Once the download finishes, re-run `./install.sh`.
