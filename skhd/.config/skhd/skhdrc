@@ -1,0 +1,20 @@
+# skhd keybindings — managed via GNU Stow (dotfiles/skhd/.config/skhd/skhdrc)
+
+# Open Terminal (Change 'Terminal' to 'Alacritty' or 'iTerm2' or 'Ghostty' if you use them)
+alt - return : open -n /System/Applications/Utilities/Terminal.app
+
+# Open Browser
+alt - b : open -a "Brave Browser"
+alt - s : open -a "Slack"
+alt - a : open -a "Arc"
+alt - p : open -a "Postman"
+alt - c : open -a "Cursor"
+
+# Restart skhd (useful when editing this file)
+alt + shift - s : skhd --reload
+
+# Toggle SketchyBar position (top ↔ bottom)
+alt + shift - t : bash ~/.config/sketchybar/plugins/toggle_bar.sh
+
+# Reload SketchyBar
+alt + shift - b : sketchybar --reload
