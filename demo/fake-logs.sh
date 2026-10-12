@@ -3,6 +3,10 @@
 # Synthetic incident output for demo recordings, so no real logs end up on screen.
 # Usage: fake-logs.sh          # service logs: healthy, errors climb, rollback, recovery
 #        fake-logs.sh metrics  # a small metrics table that follows the same story
+#        fake-logs.sh deploys  # deploy history: the bad release, then the rollback
+#
+# Healthy for the first few seconds, then degraded. Recovery comes when the file named by
+# DEMO_RECOVER_FLAG exists (record-demo.sh creates it), or after 24s without one.
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -10,10 +14,11 @@ RED='\033[0;31m'
 DIM='\033[2m'
 NC='\033[0m'
 
-# Phase by elapsed seconds: 0–7 healthy, 7–24 degraded, 24+ recovered after rollback
 phase() {
     local t=$(( $(date +%s) - START ))
-    if [ "$t" -lt 7 ]; then echo healthy
+    if [ "$t" -lt 3 ]; then echo healthy
+    elif [ -n "${DEMO_RECOVER_FLAG:-}" ]; then
+        if [ -e "$DEMO_RECOVER_FLAG" ]; then echo recovered; else echo degraded; fi
     elif [ "$t" -lt 24 ]; then echo degraded
     else echo recovered
     fi
@@ -79,8 +84,36 @@ metrics() {
     done
 }
 
+deploys() {
+    local deployed_at rollback_at=""
+    deployed_at=$(date -v-6M '+%H:%M')
+    while true; do
+        local p
+        p=$(phase)
+        if [ "$p" = recovered ] && [ -z "$rollback_at" ]; then
+            rollback_at=$(date '+%H:%M')
+        fi
+        clear
+        echo -e "checkout-api  ·  deploy history\n"
+        printf "  %-4s %-9s %-7s %s\n" "REV" "VERSION" "TIME" "STATUS"
+        printf "  %-4s %-9s %-7s %s\n" "41" "v2.14.0" "09:12" "superseded"
+        if [ -z "$rollback_at" ]; then
+            if [ "$p" = degraded ]; then
+                echo -e "  42   v2.14.1   $deployed_at   ${RED}active  ← errors started here${NC}"
+            else
+                echo -e "  42   v2.14.1   $deployed_at   ${GREEN}active${NC}"
+            fi
+        else
+            printf "  %-4s %-9s %-7s %s\n" "42" "v2.14.1" "$deployed_at" "rolled back"
+            echo -e "  43   v2.14.0   $rollback_at   ${GREEN}active  (rollback)${NC}"
+        fi
+        sleep 1
+    done
+}
+
 START=$(date +%s)
 case "${1:-logs}" in
     metrics) metrics ;;
+    deploys) deploys ;;
     *) logs ;;
 esac

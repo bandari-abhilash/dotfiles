@@ -148,15 +148,15 @@ Available themes: `catppuccin` (Macchiato) and `tokyo-night`
 
 ## Recording a demo
 
-`demo/record-demo.sh` records a ~30 second mock incident: synthetic logs and metrics on workspace 1, a dashboard on 2, a runbook on 3. Each step shows its shortcut as a caption in SketchyBar and runs the matching AeroSpace command. It saves a `.mov` and a web-ready `.mp4`.
+`demo/record-demo.sh` records a ~75 second mock incident that uses every shortcut group: synthetic logs, metrics and deploy history on workspace 1 (moving between them with `⌥ H/J/K/L`, stacking with `⌥ /`, overlapping with `⌥ ,`), the app workspaces (`⌥ 1–4` and `⌥ 7`; the empty 5 and 6 are skipped), and the `⌥ A/S/B/P` launchers. Before each step, a large banner below the bar shows the keys being pressed; the step then runs the same command as the shortcut. It saves a `.mov` and a web-ready `.mp4`.
 
 ```bash
 ./demo/record-demo.sh                                   # saves to demo/out/
 ./demo/record-demo.sh ~/Desktop/workspace/portfolio/blog/assets
-DASHBOARD_APP="Google Chrome" ./demo/record-demo.sh     # use a different browser
+DASHBOARD_URL="https://grafana.example.com" ./demo/record-demo.sh   # a different dashboard
 ```
 
-Everything on the recorded display is captured, so turn on Do Not Disturb and close private tabs first. Your terminal needs Screen Recording permission.
+Everything on the recorded display is captured, so turn on Do Not Disturb, close private tabs, and leave Slack and Postman on something safe to publish. Other windows on workspaces 1–7 are moved aside during the recording and put back afterwards. Your terminal needs Screen Recording permission.
 
 ---
 
