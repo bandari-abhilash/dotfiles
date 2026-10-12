@@ -24,14 +24,28 @@ do
     label.background.color=$BACKGROUND_2
     label.background.corner_radius=8
     label.drawing=off
-    script="$PLUGIN_DIR/aerospace.sh $sid"
     click_script="aerospace workspace $sid"
   )
 
-  sketchybar --add item space.$sid left               \
-             --set space.$sid "${space[@]}"            \
-             --subscribe space.$sid aerospace_workspace_change front_app_switched system_woke space_change
+  sketchybar --add item space.$sid left    \
+             --set space.$sid "${space[@]}"
 done
+
+# A single hidden item updates every workspace in one pass, so each event
+# costs one aerospace query instead of one per workspace
+space_controller=(
+  drawing=off
+  updates=on
+  script="$PLUGIN_DIR/aerospace.sh ${SPACE_ICONS[*]}"
+)
+
+sketchybar --add item space_controller left                   \
+           --set space_controller "${space_controller[@]}"    \
+           --subscribe space_controller aerospace_workspace_change \
+                                        front_app_switched    \
+                                        space_windows_change  \
+                                        display_change        \
+                                        system_woke
 
 # Bracket around all spaces
 spaces=(
@@ -42,7 +56,7 @@ spaces=(
 )
 
 separator=(
-  icon=􀆊
+  icon=
   icon.font="$FONT:Bold:16.0"
   padding_left=15
   padding_right=15
@@ -51,8 +65,8 @@ separator=(
   icon.color=$WHITE
 )
 
-sketchybar --add bracket spaces '/space\..*/' \
-           --set spaces "${spaces[@]}"        \
-                                              \
-           --add item separator left          \
+sketchybar --add bracket spaces '/space\.[0-9]+/' \
+           --set spaces "${spaces[@]}"            \
+                                                  \
+           --add item separator left              \
            --set separator "${separator[@]}"

@@ -1,37 +1,47 @@
 #!/bin/bash
 
-# AeroSpace workspace plugin adapted to map apps to sketchybar-app-font icons
+# Updates every workspace item in one pass: highlights the focused workspace
+# and shows sketchybar-app-font icons for the apps on each workspace.
+# Usage: aerospace.sh <workspace ids...>
 
-SID=$1
-source "$HOME/.config/sketchybar/plugins/icon_map_fn.sh"
+source "$HOME/.config/sketchybar/colors.sh"
 
-update() {
-  WIDTH="dynamic"
-  
-  # Fetch all apps on this workspace
-  APPS=$(aerospace list-windows --workspace $SID --format "%{app-name}" 2>/dev/null)
-  
-  ICON_STRING=""
-  if [ "$APPS" != "" ]; then
-    while IFS= read -r app; do
-      icon_map_fn "$app"
-      ICON_STRING+="$icon_result"
-    done <<< "$APPS"
-  fi
+ICON_MAP="$HOME/.config/sketchybar/plugins/icon_map.sh"
+LOCK="${TMPDIR:-/tmp}/sketchybar_aerospace.lock"
 
-  if [ "$FOCUSED_WORKSPACE" = "$SID" ]; then
-    WIDTH="0"
-    sketchybar --animate tanh 20 --set $NAME icon.highlight=on label.width=$WIDTH background.border_color=$BACKGROUND_2 label="$ICON_STRING"
-  else
-    sketchybar --animate tanh 20 --set $NAME icon.highlight=off label.width=$WIDTH background.border_color=$TRANSPARENT label="$ICON_STRING"
-  fi
+# Only one update at a time, so a stalled aerospace call can't pile up processes.
+# A lock older than 10s belongs to a run that was killed; reclaim it.
+if [ -d "$LOCK" ] && [ $(( $(date +%s) - $(stat -f %m "$LOCK") )) -gt 10 ]; then
+  rmdir "$LOCK" 2>/dev/null
+fi
+mkdir "$LOCK" 2>/dev/null || exit 0
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+
+# macOS has no `timeout`; perl's alarm survives exec and kills the command
+with_timeout() {
+  perl -e 'alarm shift; exec @ARGV' "$@"
 }
 
-case "$SENDER" in
-  "aerospace_workspace_change" | "front_app_switched" | "space_change" | "system_woke")
-    update
-    ;;
-  *)
-    update
-    ;;
-esac
+# FOCUSED_WORKSPACE is only passed with aerospace_workspace_change
+FOCUSED="${FOCUSED_WORKSPACE:-$(with_timeout 2 aerospace list-workspaces --focused 2>/dev/null)}"
+WINDOWS="$(with_timeout 2 aerospace list-windows --all --format '%{workspace}|%{app-name}' 2>/dev/null)"
+
+args=()
+for sid in "$@"; do
+  icons=""
+  if [ -f "$ICON_MAP" ]; then
+    while IFS= read -r app; do
+      [ -n "$app" ] && icons+="$(bash "$ICON_MAP" "$app")"
+    done <<< "$(printf '%s\n' "$WINDOWS" | awk -F'|' -v s="$sid" '$1 == s { print $2 }')"
+  fi
+
+  highlight=off
+  [ "$sid" = "$FOCUSED" ] && highlight=on
+
+  label_drawing=off
+  [ -n "$icons" ] && label_drawing=on
+
+  args+=(--set "space.$sid" icon.highlight=$highlight label.drawing=$label_drawing label="$icons")
+done
+
+sketchybar --animate tanh 20 "${args[@]}"

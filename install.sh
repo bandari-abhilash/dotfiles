@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Dotfiles One-Click Installer for macOS
-# This script installs Homebrew, dependencies, fonts, and sets up SketchyBar, AeroSpace & skhd using GNU Stow.
+# This script installs Homebrew, dependencies, fonts, and sets up SketchyBar & AeroSpace using GNU Stow.
 # It supports being run from any location (e.g., ~/Desktop/dotfiles, ~/dotfiles, etc.)
 # If anything fails after changes are made, all changes are automatically rolled back.
 
@@ -17,6 +17,11 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+# sketchybar-app-font release; the font and its icon map must come from the same version
+APP_FONT_VERSION="v2.0.5"
+APP_FONT_URL="https://github.com/kvndrsslr/sketchybar-app-font/releases/download/$APP_FONT_VERSION"
+ICON_MAP="$DOTFILES_DIR/sketchybar/.config/sketchybar/plugins/icon_map.sh"
+
 # ─── Rollback state tracking ───────────────────────────────────────────────────
 INSTALLED_FORMULAE=()
 INSTALLED_CASKS=()
@@ -24,6 +29,7 @@ INSTALLED_TAPS=()
 STOWED_PACKAGES=()
 BACKED_UP_CONFIGS=()
 SKETCHYBAR_FONT_INSTALLED=false
+ICON_MAP_INSTALLED=false
 
 # ─── Cleanup / Rollback function ───────────────────────────────────────────────
 rollback() {
@@ -49,6 +55,9 @@ rollback() {
     if [ "$SKETCHYBAR_FONT_INSTALLED" = true ]; then
         echo -e "${YELLOW}  Removing sketchybar-app-font...${NC}"
         rm -f "$HOME/Library/Fonts/sketchybar-app-font.ttf" 2>/dev/null || true
+    fi
+    if [ "$ICON_MAP_INSTALLED" = true ]; then
+        rm -f "$ICON_MAP" 2>/dev/null || true
     fi
 
     # Uninstall casks/formulae we installed (in reverse order)
@@ -88,6 +97,14 @@ cask_installed() {
     brew list --cask 2>/dev/null | grep -q "^$1$"
 }
 
+# ─── 0. macOS version check ────────────────────────────────────────────────────
+# AeroSpace requires macOS 13 (Ventura) or newer
+MACOS_MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
+if [ "$MACOS_MAJOR" -lt 13 ]; then
+    echo -e "${RED}==> macOS 13 (Ventura) or newer is required (found $(sw_vers -productVersion)).${NC}"
+    exit 1
+fi
+
 # ─── 1. Homebrew ───────────────────────────────────────────────────────────────
 echo -e "${BLUE}==> Starting Dotfiles Installation...${NC}"
 echo -e "${BLUE}==> Dotfiles directory: $DOTFILES_DIR${NC}"
@@ -122,16 +139,8 @@ else
     echo -e "${GREEN}  nikitabobko/tap already tapped.${NC}"
 fi
 
-# skhd lives in koekeishiya/formulae (not homebrew/core)
-if ! tap_installed "koekeishiya/formulae"; then
-    brew tap koekeishiya/formulae
-    INSTALLED_TAPS+=("koekeishiya/formulae")
-else
-    echo -e "${GREEN}  koekeishiya/formulae already tapped.${NC}"
-fi
-
 # ─── 3. Core formulae ─────────────────────────────────────────────────────────
-echo -e "${BLUE}==> Installing core tools (stow, jq, sketchybar, skhd, aerospace)...${NC}"
+echo -e "${BLUE}==> Installing core tools (stow, jq, sketchybar, aerospace)...${NC}"
 
 for formula in stow jq sketchybar; do
     if ! formula_installed "$formula"; then
@@ -141,14 +150,6 @@ for formula in stow jq sketchybar; do
         echo -e "${GREEN}  $formula already installed.${NC}"
     fi
 done
-
-# skhd is not in homebrew/core — must install from its own tap
-if ! formula_installed "skhd"; then
-    brew install koekeishiya/formulae/skhd
-    INSTALLED_FORMULAE+=("skhd")
-else
-    echo -e "${GREEN}  skhd already installed.${NC}"
-fi
 
 if ! cask_installed "aerospace"; then
     brew install --cask aerospace
@@ -167,13 +168,23 @@ else
     echo -e "${GREEN}  font-hack-nerd-font already installed.${NC}"
 fi
 
+# -f makes curl fail on HTTP errors instead of saving the error page as the file
 echo -e "${BLUE}==> Downloading sketchybar-app-font...${NC}"
+mkdir -p "$HOME/Library/Fonts"
 if [ ! -f "$HOME/Library/Fonts/sketchybar-app-font.ttf" ]; then
-    curl -sL https://github.com/kvndrsslr/sketchybar-app-font/releases/download/v2.0.5/sketchybar-app-font.ttf \
-        -o "$HOME/Library/Fonts/sketchybar-app-font.ttf"
     SKETCHYBAR_FONT_INSTALLED=true
+    curl -fsSL "$APP_FONT_URL/sketchybar-app-font.ttf" -o "$HOME/Library/Fonts/sketchybar-app-font.ttf"
 else
     echo -e "${GREEN}  sketchybar-app-font already installed.${NC}"
+fi
+
+echo -e "${BLUE}==> Downloading sketchybar-app-font icon map...${NC}"
+if [ ! -f "$ICON_MAP" ]; then
+    ICON_MAP_INSTALLED=true
+    curl -fsSL "$APP_FONT_URL/icon_map.sh" -o "$ICON_MAP"
+    chmod +x "$ICON_MAP"
+else
+    echo -e "${GREEN}  icon map already present.${NC}"
 fi
 
 # ─── 5. GNU Stow ──────────────────────────────────────────────────────────────
@@ -181,8 +192,15 @@ echo -e "${BLUE}==> Applying dotfiles via GNU Stow...${NC}"
 
 cd "$DOTFILES_DIR"
 
+# Earlier versions of these dotfiles used skhd; AeroSpace now handles those hotkeys
+if [ -L "$HOME/.config/skhd" ]; then
+    echo -e "${YELLOW}  Removing old skhd config symlink (hotkeys now live in aerospace.toml)${NC}"
+    command -v skhd &> /dev/null && skhd --stop-service 2>/dev/null || true
+    rm "$HOME/.config/skhd"
+fi
+
 # Back up any existing non-symlink configs
-for folder in aerospace sketchybar skhd; do
+for folder in aerospace sketchybar; do
     if [ -d "$HOME/.config/$folder" ] && [ ! -L "$HOME/.config/$folder" ]; then
         echo -e "${YELLOW}  Backing up existing $folder config to ~/.config/${folder}.backup${NC}"
         mv "$HOME/.config/$folder" "$HOME/.config/${folder}.backup"
@@ -191,7 +209,7 @@ for folder in aerospace sketchybar skhd; do
 done
 
 # Stow each package
-for pkg in aerospace sketchybar skhd; do
+for pkg in aerospace sketchybar; do
     stow --restow --target="$HOME" "$pkg"
     STOWED_PACKAGES+=("$pkg")
 done
@@ -200,37 +218,32 @@ done
 echo -e "${BLUE}==> Starting SketchyBar...${NC}"
 brew services start sketchybar
 
-echo -e "${BLUE}==> Starting skhd...${NC}"
-# skhd manages its own launchd plist — do not use brew services
-skhd --start-service
-
-# ─── 7. skhd Accessibility Permission ────────────────────────────────────────
+# ─── 7. AeroSpace Accessibility Permission ───────────────────────────────────
 echo -e "\n${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}  ACTION REQUIRED: Grant Accessibility Permission to skhd${NC}"
+echo -e "${YELLOW}  ACTION REQUIRED: Grant Accessibility Permission to AeroSpace${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "  skhd needs Accessibility access to intercept key events."
-echo -e "  Opening System Settings → Privacy & Security → Accessibility...\n"
+echo -e "  AeroSpace needs Accessibility access to move windows and handle hotkeys."
+echo -e "  Launching AeroSpace; macOS will ask for permission.\n"
 echo -e "  ${BLUE}Steps:${NC}"
-echo -e "   1. Find 'skhd' in the list and toggle it ON."
-echo -e "   2. If skhd is NOT listed, click the '+' button, then in the file picker"
-echo -e "      press ${YELLOW}Cmd + Shift + G${NC} to open 'Go to Folder', type:"
-echo -e "      ${BLUE}/opt/homebrew/bin${NC}  → select 'skhd' → click Open."
-echo -e "   3. Toggle skhd ON, then come back here and press Enter."
-echo -e "   4. After granting permission, skhd will start intercepting keys.\n"
+echo -e "   1. In System Settings → Privacy & Security → Accessibility, toggle AeroSpace ON."
+echo -e "   2. Come back here and press Enter.\n"
 
-# Open the Accessibility pane directly
-open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+open -a AeroSpace
 
 echo -n "  Press [Enter] once you have granted Accessibility permission..."
 read -r
 
-# Restart skhd now that it has permission
-echo -e "${BLUE}==> Restarting skhd with new permissions...${NC}"
-skhd --restart-service
+# ─── Notch check ──────────────────────────────────────────────────────────────
+# The built-in top gap in aerospace.toml assumes a notch; Macs without one need more
+NOTCH_INSET="$(osascript -l JavaScript -e 'ObjC.import("AppKit"); var s = $.NSScreen.screens; var t = 0; for (var i = 0; i < s.count; i++) { var x = s.objectAtIndex(i); if (ObjC.unwrap(x.localizedName).indexOf("Built-in") === 0) t = x.safeAreaInsets.top; } t' 2>/dev/null || echo "")"
+if [ "$NOTCH_INSET" = "0" ]; then
+    echo -e "\n${YELLOW}==> Your built-in display has no notch.${NC}"
+    echo -e "    Set ${BLUE}outer.top = [{ monitor.'built-in' = 47 }, 47]${NC} in aerospace/.config/aerospace/aerospace.toml"
+    echo -e "    so windows don't sit under SketchyBar, then press Alt + Shift + R."
+fi
 
 # ─── Done ─────────────────────────────────────────────────────────────────────
 echo -e "\n${GREEN}==> Installation Complete!${NC}"
-echo -e "${GREEN}    SketchyBar, skhd, and AeroSpace configs are now symlinked and active.${NC}"
-echo "    Note: You may need to start AeroSpace manually from your Applications folder for the first time."
-echo "    skhd keybindings are live — use alt+shift+s to reload skhd after any edits."
-
+echo -e "${GREEN}    SketchyBar and AeroSpace configs are now symlinked and active.${NC}"
+echo "    Set System Settings → Menu Bar → 'Automatically hide and show the menu bar' to Always."
+echo "    Hotkeys live in aerospace.toml — use alt+shift+r to reload after any edits."

@@ -2,13 +2,23 @@
 
 # Omakub-style theme setter
 
+# Resolve the repo from this script's real location (follows symlinks),
+# so it works wherever the repo is cloned
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+    DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+DOTFILES_DIR="$(cd "$(dirname "$SOURCE")/.." && pwd)"
+
 THEME=$1
-THEME_FILE="$HOME/dotfiles/themes/${THEME}.sh"
+THEME_FILE="$DOTFILES_DIR/themes/${THEME}.sh"
 
 if [ -z "$THEME" ]; then
     echo "Usage: set-theme <theme-name>"
     echo "Available themes:"
-    ls "$HOME/dotfiles/themes" | grep "\.sh$" | sed 's/\.sh$//'
+    ls "$DOTFILES_DIR/themes" | grep "\.sh$" | sed 's/\.sh$//'
     exit 1
 fi
 
@@ -24,7 +34,7 @@ cat "$THEME_FILE" > "$HOME/.config/sketchybar/colors.sh"
 sketchybar --reload
 
 # Change macOS Wallpaper
-BG_FILE=$(ls "$HOME/dotfiles/themes/backgrounds/${THEME}".* 2>/dev/null | head -n 1)
+BG_FILE=$(ls "$DOTFILES_DIR/themes/backgrounds/${THEME}".* 2>/dev/null | head -n 1)
 if [ -n "$BG_FILE" ] && [ -f "$BG_FILE" ]; then
     echo "Updating desktop wallpaper..."
     # Bypass macOS wallpaper cache by copying to a unique path

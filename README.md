@@ -2,7 +2,7 @@
 
 My personal macOS setup — a tiling window manager, a custom status bar, and keyboard-driven everything. No mouse needed for 90% of what I do. If you've been wanting to clean up your mac workflow, this is a good starting point.
 
-Built around [AeroSpace](https://github.com/nikitabobko/AeroSpace), [SketchyBar](https://github.com/FelixKratz/SketchyBar), and [skhd](https://github.com/koekeishiya/skhd). Managed with [GNU Stow](https://www.gnu.org/software/stow/) so everything stays version-controlled and portable.
+Built around [AeroSpace](https://github.com/nikitabobko/AeroSpace) and [SketchyBar](https://github.com/FelixKratz/SketchyBar). Managed with [GNU Stow](https://www.gnu.org/software/stow/) so everything stays version-controlled and portable.
 
 ---
 
@@ -10,7 +10,14 @@ Built around [AeroSpace](https://github.com/nikitabobko/AeroSpace), [SketchyBar]
 
 - **AeroSpace** — tiling window manager. Windows snap into a grid automatically. Switch workspaces and move windows around without touching the mouse.
 - **SketchyBar** — replaces the default macOS menu bar with a floating, blurred bar that actually shows useful stuff (workspaces, Wi-Fi, battery, volume, current app).
-- **skhd** — global hotkeys for launching apps and controlling the environment.
+- **App hotkeys** — launch your apps from the keyboard, handled by AeroSpace itself (no extra daemon).
+
+---
+
+## Requirements
+
+- macOS 13 (Ventura) or newer — AeroSpace doesn't support older versions
+- Any MacBook, Apple Silicon or Intel. External monitors work too.
 
 ---
 
@@ -29,12 +36,13 @@ chmod +x install.sh
 
 The script will:
 1. Install Homebrew if it's not already there
-2. Tap `felixkratz/formulae`, `nikitabobko/tap`, and `koekeishiya/formulae`
-3. Install `stow`, `jq`, `sketchybar`, `skhd`, and `aerospace`
-4. Install Hack Nerd Font and the sketchybar-app-font
+2. Tap `felixkratz/formulae` and `nikitabobko/tap`
+3. Install `stow`, `jq`, `sketchybar`, and `aerospace`
+4. Install Hack Nerd Font, the sketchybar-app-font, and its matching icon map
 5. Symlink all configs into `~/.config` via GNU Stow
-6. Start SketchyBar and skhd as background services
-7. Walk you through granting Accessibility permissions
+6. Start SketchyBar as a background service
+7. Walk you through granting AeroSpace Accessibility permission
+8. Tell you if your MacBook has no notch, since that needs a one-line gap tweak (see below)
 
 If anything fails midway, the script rolls back everything it changed — no half-installed state left behind.
 
@@ -42,56 +50,34 @@ If anything fails midway, the script rolls back everything it changed — no hal
 
 ## Post-install: Permissions
 
-
-## Screenshots
-
-**Replacing the system menu bar with SketchyBar** — set it to hide "In Full Screen Only" so they don't overlap:
-
-![Menu bar setting — set to In Full Screen Only](replacing_mac_menubar.png)
-
-**Granting Accessibility permission to AeroSpace** — required for it to move and resize windows:
-
-![AeroSpace in Accessibility settings](aerospace_accesibility.png)
-
-**skhd showing up in Login Items** — this confirms it's running as a background service:
-
-![skhd in Login Items & Extensions](skhd_accessibility.png)
-
----
-
-Two things need Accessibility access. macOS will prompt you, but here's what to expect.
-
-### AeroSpace
-
-Go to **System Settings → Privacy & Security → Accessibility** and toggle AeroSpace on. You should see it appear there automatically after first launch.
+AeroSpace needs Accessibility access to move windows and handle hotkeys. Go to **System Settings → Privacy & Security → Accessibility** and toggle AeroSpace on. It appears there automatically after first launch.
 
 ![AeroSpace accessibility toggle](aerospace_accesibility.png)
 
-### skhd
-
-skhd doesn't always appear in the Accessibility list automatically. If it's missing:
-
-1. Click `+` in the Accessibility list
-2. **Press `Cmd + Shift + G`** in the file picker (this lets you type a custom path)
-3. Type `/opt/homebrew/bin` → hit Enter → select `skhd` → click Open
-4. Toggle it ON
-
-After adding it, restart the service:
-```bash
-skhd --restart-service
-```
-
-You can also confirm skhd is running by checking **System Settings → General → Login Items & Extensions** — it should appear under background items:
-
-![skhd in Login Items](skhd_accessibility.png)
+> **Upgrading from the skhd version?** Hotkeys now live in `aerospace.toml`. Re-running `./install.sh` stops skhd and removes its old config symlink. You can then `brew uninstall skhd` and remove it from the Accessibility list.
 
 ---
 
 ## Hiding the native menu bar
 
-Since SketchyBar takes over the top of the screen, you'll want to hide the default macOS menu bar so they don't overlap. Go to **System Settings → Desktop & Dock → Menu Bar** and set "Automatically hide and show the menu bar" to **In Full Screen Only**:
+SketchyBar takes over the top of the screen, so hide the default macOS menu bar. Go to **System Settings → Menu Bar** (on older macOS: **Desktop & Dock → Menu Bar**) and set "Automatically hide and show the menu bar" to **Always**:
 
 ![Menu bar hide setting](replacing_mac_menubar.png)
+
+The window gaps in `aerospace.toml` assume this setting.
+
+---
+
+## Display compatibility (notch vs. no notch)
+
+macOS reserves a strip at the top of notched MacBook screens (MacBook Air M2 and later, 14"/16" MacBook Pro 2021 and later), so windows there already start below most of the bar. The top gap is set per display:
+
+```toml
+outer.top = [{ monitor.'built-in' = 15 }, 47]   # built-in (notched) display, everything else
+```
+
+- **External monitors** use the second value (47 = 39pt bar + 8pt gap).
+- **MacBooks without a notch** (M1 Air, 13" Pro, Intel models) should use `47` for the built-in value too. The installer tells you if this applies.
 
 ---
 
@@ -113,7 +99,7 @@ Since SketchyBar takes over the top of the screen, you'll want to hide the defau
 | `Alt + Shift + Tab` | Move workspace to next monitor |
 | `Alt + Shift + R` | Reload AeroSpace config |
 
-### skhd — App Launchers & Quick Actions
+### App Launchers & Quick Actions
 
 | Shortcut | Action |
 |----------|--------|
@@ -123,9 +109,11 @@ Since SketchyBar takes over the top of the screen, you'll want to hide the defau
 | `Alt + C` | Open Cursor |
 | `Alt + P` | Open Postman |
 | `Alt + S` | Open Slack |
-| `Alt + Shift + S` | Reload skhd config |
 | `Alt + Shift + B` | Reload SketchyBar |
-| `Alt + Shift + T` | Toggle SketchyBar position (top ↔ bottom) |
+
+All hotkeys are defined in `aerospace/.config/aerospace/aerospace.toml`.
+
+> **Non-US keyboard layouts:** on layouts like German or the Nordic ones, `Option + letter` types characters such as `@`, `[`, `|` and `~`. These bindings will swallow them. If that's you, change the `alt-` prefix to `ctrl-alt-` (or similar) for the keys you need for typing.
 
 ---
 
@@ -152,9 +140,23 @@ There's a simple theme switcher that swaps both the SketchyBar color palette and
 Available themes: `catppuccin` (Macchiato) and `tokyo-night`
 
 ```bash
-~/dotfiles/bin/set-theme tokyo-night
-~/dotfiles/bin/set-theme catppuccin
+./bin/set-theme tokyo-night
+./bin/set-theme catppuccin
 ```
+
+---
+
+## Recording a demo
+
+`demo/record-demo.sh` records a ~30 second mock incident: synthetic logs and metrics on workspace 1, a dashboard on 2, a runbook on 3. Each step shows its shortcut as a caption in SketchyBar and runs the matching AeroSpace command. It saves a `.mov` and a web-ready `.mp4`.
+
+```bash
+./demo/record-demo.sh                                   # saves to demo/out/
+./demo/record-demo.sh ~/Desktop/workspace/portfolio/blog/assets
+DASHBOARD_APP="Google Chrome" ./demo/record-demo.sh     # use a different browser
+```
+
+Everything on the recorded display is captured, so turn on Do Not Disturb and close private tabs first. Your terminal needs Screen Recording permission.
 
 ---
 
@@ -168,7 +170,6 @@ Every config file in this repo is symlinked into your `~/.config` folder. So `~/
 |------|----------------|
 | AeroSpace | `aerospace/.config/aerospace/aerospace.toml` |
 | SketchyBar | `sketchybar/.config/sketchybar/sketchybarrc` |
-| skhd | `skhd/.config/skhd/skhdrc` |
 
 No need to re-run stow after editing. Changes take effect immediately (or after reloading the relevant service).
 
@@ -181,7 +182,7 @@ dotfiles/
 ├── aerospace/
 │   └── .config/
 │       └── aerospace/
-│           └── aerospace.toml        # Tiling layout, keybindings, workspace rules
+│           └── aerospace.toml        # Tiling layout, hotkeys, workspace rules
 ├── sketchybar/
 │   └── .config/
 │       └── sketchybar/
@@ -190,10 +191,6 @@ dotfiles/
 │           ├── icons.sh              # Nerd Font icon map
 │           ├── items/                # Bar items (spaces, battery, wifi, etc.)
 │           └── plugins/              # Scripts that power each item
-├── skhd/
-│   └── .config/
-│       └── skhd/
-│           └── skhdrc                # Global hotkeys
 ├── themes/
 │   ├── catppuccin.sh
 │   ├── tokyo-night.sh
@@ -201,7 +198,11 @@ dotfiles/
 │       └── tokyo-night.png
 ├── bin/
 │   └── set-theme                     # Theme switcher script
-└── install.sh                        # One-click installer with rollback
+├── demo/
+│   ├── record-demo.sh                # Scripted screen recording for demos
+│   └── fake-logs.sh                  # Synthetic incident logs and metrics
+├── install.sh                        # One-click installer with rollback
+└── uninstall.sh                      # Undoes install.sh
 ```
 
 ---
@@ -209,7 +210,7 @@ dotfiles/
 ## Troubleshooting
 
 ### "No available formula" or "CommandLineTools" error during install
-If the script fails with an error like `No available formula with the name` or explicitly hints at Xcode Command Line Tools, macOS is missing the required C-compiler to build SketchyBar/skhd.
+If the script fails with an error like `No available formula with the name` or explicitly hints at Xcode Command Line Tools, macOS is missing the required C-compiler to build SketchyBar.
 
 Fix this by reinstalling the Xcode Command Line Tools:
 ```bash

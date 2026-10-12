@@ -46,6 +46,7 @@ if command -v skhd &> /dev/null; then
 fi
 
 # Note: AeroSpace is an app, not a service. User can quit it manually.
+# skhd is only present on setups installed before hotkeys moved into AeroSpace.
 
 # ─── 2. Un-stow Configs ──────────────────────────────────────────────────────
 echo -e "${BLUE}==> Removing symlinks via GNU Stow...${NC}"
@@ -74,6 +75,7 @@ if [ -f "$HOME/Library/Fonts/sketchybar-app-font.ttf" ]; then
     echo "  Removing sketchybar-app-font.ttf..."
     rm -f "$HOME/Library/Fonts/sketchybar-app-font.ttf"
 fi
+rm -f "$DOTFILES_DIR/sketchybar/.config/sketchybar/plugins/icon_map.sh"
 
 # We prompt for Hack Nerd Font since they might use it for other things
 if brew list --cask 2>/dev/null | grep -q "^font-hack-nerd-font$"; then

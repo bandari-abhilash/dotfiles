@@ -17,7 +17,7 @@ apple_logo=(
 apple_prefs=(
   icon=$PREFERENCES
   label="Preferences"
-  click_script="open -a 'System Preferences'; $POPUP_OFF"
+  click_script="open -a 'System Settings'; $POPUP_OFF"
 )
 
 apple_activity=(
@@ -29,7 +29,7 @@ apple_activity=(
 apple_lock=(
   icon=$LOCK
   label="Lock Screen"
-  click_script="pmset displaysleepnow; $POPUP_OFF"
+  click_script="$POPUP_OFF; $PLUGIN_DIR/lock_screen.sh"
 )
 
 sketchybar --add item apple.logo left                  \
