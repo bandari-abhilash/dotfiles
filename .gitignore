@@ -1,0 +1,7 @@
+.DS_Store
+
+# Downloaded by install.sh to match the installed sketchybar-app-font version
+sketchybar/.config/sketchybar/plugins/icon_map.sh
+
+# Demo recordings
+demo/out/
