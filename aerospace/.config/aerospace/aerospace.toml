@@ -1,6 +1,9 @@
 # Place this in ~/.config/aerospace/aerospace.toml
 # SketchyBar is started by `brew services`, so it isn't launched here too
 
+# Without this, AeroSpace doesn't come back after a restart and no shortcut works
+start-at-login = true
+
 # Notify SketchyBar when workspace changes
 exec-on-workspace-change = [
     '/bin/bash',
